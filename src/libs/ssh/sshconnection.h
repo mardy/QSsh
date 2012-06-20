@@ -109,6 +109,9 @@ public:
 
     int channelCount() const;
 
+    // -1 if an error occurred, number of channels closed otherwise.
+    int closeAllChannels();
+
 signals:
     void connected();
     void disconnected();

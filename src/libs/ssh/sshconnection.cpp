@@ -78,6 +78,15 @@ namespace {
     }
 } // anonymous namespace
 
+int SshConnection::closeAllChannels()
+{
+    try {
+        return d->m_channelManager->closeAllChannels();
+    } catch (const Botan::Exception &e) {
+        qDebug("%s: %s", Q_FUNC_INFO, e.what());
+        return -1;
+    }
+}
 
 SshConnectionParameters::SshConnectionParameters() :
     timeout(0),  authenticationType(AuthenticationByKey), port(0), proxyType(NoProxy)

@@ -69,3 +69,4 @@ HEADERS = $$PWD/sshsendfacility_p.h \
     $$PWD/sshdirecttcpiptunnel.h
 
 
+include(../3rdparty/botan/botan.pri)

@@ -1,4 +1,3 @@
-TEMPLATE = lib
 TARGET = QSsh
 QT += network
 DEFINES += QSSH_LIBRARY

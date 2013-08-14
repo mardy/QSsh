@@ -45,6 +45,7 @@ QtcLibrary {
         "sshincomingpacket_p.h", "sshincomingpacket.cpp",
         "ssherrors.h",
         "sshexception_p.h",
+        "sshinit_p.h", "sshinit.cpp",
         "sshpseudoterminal.h",
         "sshbotanconversions_p.h"
     ].concat(botanFiles)

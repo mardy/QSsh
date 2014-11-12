@@ -32,7 +32,8 @@ SOURCES = $$PWD/sshsendfacility.cpp \
     $$PWD/sshkeypasswordretriever.cpp \
     $$PWD/sftpfilesystemmodel.cpp \
     $$PWD/sshinit.cpp \
-    $$PWD/sshdirecttcpiptunnel.cpp
+    $$PWD/sshdirecttcpiptunnel.cpp \
+    $$PWD/sshhostkeydatabase.cpp
 
 HEADERS = $$PWD/sshsendfacility_p.h \
     $$PWD/sshremoteprocess.h \
@@ -68,7 +69,8 @@ HEADERS = $$PWD/sshsendfacility_p.h \
     $$PWD/sshdirecttcpiptunnel_p.h \
     $$PWD/sshinit_p.h \
     $$PWD/sshinit_p.h \
-    $$PWD/sshdirecttcpiptunnel.h
+    $$PWD/sshdirecttcpiptunnel.h \
+    $$PWD/sshhostkeydatabase.h
 
 
 include(../3rdparty/botan/botan.pri)

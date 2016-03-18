@@ -23,8 +23,7 @@
 **
 ****************************************************************************/
 
-#ifndef SFTPDEFS_H
-#define SFTPDEFS_H
+#pragma once
 
 #include "ssh_global.h"
 
@@ -62,5 +61,3 @@ public:
 };
 
 } // namespace QSsh
-
-#endif // SFTPDEFS_H

@@ -23,8 +23,7 @@
 **
 ****************************************************************************/
 
-#ifndef SFTPOPERATION_P_H
-#define SFTPOPERATION_P_H
+#pragma once
 
 #include "sftpdefs.h"
 
@@ -281,5 +280,3 @@ struct SftpDownloadDir
 
 } // namespace Internal
 } // namespace QSsh
-
-#endif // SFTPOPERATION_P_H

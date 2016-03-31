@@ -22,11 +22,9 @@
 ** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ****************************************************************************/
-
 #pragma once
 
 #include "ssh_global.h"
-
 #include <QIODevice>
 #include <QSharedPointer>
 
@@ -34,22 +32,20 @@ namespace QSsh {
 
 namespace Internal {
 class SshChannelManager;
-class SshDirectTcpIpTunnelPrivate;
+class SshForwardedTcpIpTunnelPrivate;
 class SshSendFacility;
 class SshTcpIpTunnelPrivate;
 } // namespace Internal
 
-class QSSH_EXPORT SshDirectTcpIpTunnel : public QIODevice
+class QSSH_EXPORT SshForwardedTcpIpTunnel : public QIODevice
 {
     Q_OBJECT
-
     friend class Internal::SshChannelManager;
     friend class Internal::SshTcpIpTunnelPrivate;
 
 public:
-    typedef QSharedPointer<SshDirectTcpIpTunnel> Ptr;
-
-    ~SshDirectTcpIpTunnel();
+    typedef QSharedPointer<SshForwardedTcpIpTunnel> Ptr;
+    ~SshForwardedTcpIpTunnel();
 
     // QIODevice stuff
     bool atEnd() const;
@@ -58,22 +54,17 @@ public:
     void close();
     bool isSequential() const { return true; }
 
-    void initialize();
-
 signals:
-    void initialized();
     void error(const QString &reason);
 
 private:
-    SshDirectTcpIpTunnel(quint32 channelId, const QString &originatingHost,
-            quint16 originatingPort, const QString &remoteHost, quint16 remotePort,
-            Internal::SshSendFacility &sendFacility);
+    SshForwardedTcpIpTunnel(quint32 channelId, Internal::SshSendFacility &sendFacility);
 
     // QIODevice stuff
-    qint64 readData(char *data, qint64 maxlen);
-    qint64 writeData(const char *data, qint64 len);
+    qint64 readData(char *data, qint64 maxlen) override;
+    qint64 writeData(const char *data, qint64 len) override;
 
-    Internal::SshDirectTcpIpTunnelPrivate * const d;
+    Internal::SshForwardedTcpIpTunnelPrivate * const d;
 };
 
 } // namespace QSsh

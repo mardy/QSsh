@@ -25,55 +25,20 @@
 
 #pragma once
 
-#include "ssh_global.h"
-
-#include <QIODevice>
-#include <QSharedPointer>
+#include "sshforwardedtcpiptunnel.h"
+#include "sshtcpiptunnel_p.h"
 
 namespace QSsh {
-
 namespace Internal {
-class SshChannelManager;
-class SshDirectTcpIpTunnelPrivate;
-class SshSendFacility;
-class SshTcpIpTunnelPrivate;
-} // namespace Internal
 
-class QSSH_EXPORT SshDirectTcpIpTunnel : public QIODevice
+class SshForwardedTcpIpTunnelPrivate : public SshTcpIpTunnelPrivate
 {
     Q_OBJECT
-
-    friend class Internal::SshChannelManager;
-    friend class Internal::SshTcpIpTunnelPrivate;
-
+    friend class QSsh::SshForwardedTcpIpTunnel;
 public:
-    typedef QSharedPointer<SshDirectTcpIpTunnel> Ptr;
-
-    ~SshDirectTcpIpTunnel();
-
-    // QIODevice stuff
-    bool atEnd() const;
-    qint64 bytesAvailable() const;
-    bool canReadLine() const;
-    void close();
-    bool isSequential() const { return true; }
-
-    void initialize();
-
-signals:
-    void initialized();
-    void error(const QString &reason);
-
-private:
-    SshDirectTcpIpTunnel(quint32 channelId, const QString &originatingHost,
-            quint16 originatingPort, const QString &remoteHost, quint16 remotePort,
-            Internal::SshSendFacility &sendFacility);
-
-    // QIODevice stuff
-    qint64 readData(char *data, qint64 maxlen);
-    qint64 writeData(const char *data, qint64 len);
-
-    Internal::SshDirectTcpIpTunnelPrivate * const d;
+    SshForwardedTcpIpTunnelPrivate(quint32 channelId, SshSendFacility &sendFacility);
+    void handleOpenSuccessInternal() override;
 };
 
+} // namespace Internal
 } // namespace QSsh

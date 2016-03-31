@@ -28,6 +28,7 @@ QtcLibrary {
         "sshdirecttcpiptunnel.h", "sshdirecttcpiptunnel_p.h", "sshdirecttcpiptunnel.cpp",
         "ssherrors.h",
         "sshexception_p.h",
+        "sshforwardedtcpiptunnel.cpp", "sshforwardedtcpiptunnel.h", "sshforwardedtcpiptunnel_p.h",
         "sshhostkeydatabase.cpp",
         "sshhostkeydatabase.h",
         "sshincomingpacket_p.h", "sshincomingpacket.cpp",
@@ -45,6 +46,8 @@ QtcLibrary {
         "sshremoteprocess.cpp", "sshremoteprocess.h", "sshremoteprocess_p.h",
         "sshremoteprocessrunner.cpp", "sshremoteprocessrunner.h",
         "sshsendfacility.cpp", "sshsendfacility_p.h",
+        "sshtcpipforwardserver.cpp", "sshtcpipforwardserver.h", "sshtcpipforwardserver_p.h",
+        "sshtcpiptunnel.cpp", "sshtcpiptunnel_p.h",
     ].concat(botanFiles)
 
     property var useSystemBotan: qbs.getEnv("USE_SYSTEM_BOTAN") === "1"

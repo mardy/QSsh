@@ -37,7 +37,8 @@ SOURCES = $$PWD/sshsendfacility.cpp \
     $$PWD/sshhostkeydatabase.cpp \
     $$PWD/sshtcpipforwardserver.cpp \
     $$PWD/sshtcpiptunnel.cpp \
-    $$PWD/sshforwardedtcpiptunnel.cpp
+    $$PWD/sshforwardedtcpiptunnel.cpp \
+    $$PWD/sshagent.cpp
 
 HEADERS = $$PWD/sshsendfacility_p.h \
     $$PWD/sshremoteprocess.h \
@@ -80,7 +81,8 @@ HEADERS = $$PWD/sshsendfacility_p.h \
     $$PWD/sshtcpipforwardserver_p.h \
     $$PWD/sshtcpiptunnel_p.h \
     $$PWD/sshforwardedtcpiptunnel.h \
-    $$PWD/sshforwardedtcpiptunnel_p.h
+    $$PWD/sshforwardedtcpiptunnel_p.h \
+    $$PWD/sshagent_p.h
 
 
 include(../3rdparty/botan/botan.pri)

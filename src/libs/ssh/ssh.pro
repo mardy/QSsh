@@ -1,6 +1,6 @@
 TARGET = QSsh
 QT += network
-DEFINES += QSSH_LIBRARY
+DEFINES += QTCSSH_LIBRARY
 
 #Enable debug log
 #DEFINES += CREATOR_SSH_DEBUG

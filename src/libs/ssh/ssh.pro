@@ -85,4 +85,6 @@ HEADERS = $$PWD/sshsendfacility_p.h \
     $$PWD/sshagent_p.h
 
 
+RESOURCES += $$PWD/ssh.qrc
+
 include(../3rdparty/botan/botan.pri)

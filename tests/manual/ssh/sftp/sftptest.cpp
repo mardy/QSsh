@@ -1,32 +1,27 @@
-/**************************************************************************
+/****************************************************************************
 **
-** This file is part of Qt Creator
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
-** Copyright (c) 2012 Nokia Corporation and/or its subsidiary(-ies).
+** This file is part of Qt Creator.
 **
-** Contact: http://www.qt-project.org/
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and The Qt Company. For licensing terms
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
-** GNU Lesser General Public License Usage
-**
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this file.
-** Please review the following information to ensure the GNU Lesser General
-** Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
-**
-** Other Usage
-**
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**************************************************************************/
+****************************************************************************/
 
 #include "sftptest.h"
 
@@ -61,11 +56,11 @@ SftpTest::~SftpTest()
 void SftpTest::run()
 {
     m_connection = new SshConnection(m_parameters.sshParams);
-    connect(m_connection, SIGNAL(connected()), SLOT(handleConnected()));
-    connect(m_connection, SIGNAL(error(QSsh::SshError)), SLOT(handleError()));
-    connect(m_connection, SIGNAL(disconnected()), SLOT(handleDisconnected()));
+    connect(m_connection, &SshConnection::connected, this, &SftpTest::handleConnected);
+    connect(m_connection, &SshConnection::error, this, &SftpTest::handleError);
+    connect(m_connection, &SshConnection::disconnected, this, &SftpTest::handleDisconnected);
     std::cout << "Connecting to host '"
-        << qPrintable(m_parameters.sshParams.host) << "'..." << std::endl;
+        << qPrintable(m_parameters.sshParams.host()) << "'..." << std::endl;
     m_state = Connecting;
     m_connection->connectToHost();
 }
@@ -79,17 +74,17 @@ void SftpTest::handleConnected()
     } else {
         std::cout << "Connected. Initializing SFTP channel..." << std::endl;
         m_channel = m_connection->createSftpChannel();
-        connect(m_channel.data(), SIGNAL(initialized()), this,
-           SLOT(handleChannelInitialized()));
-        connect(m_channel.data(), SIGNAL(initializationFailed(QString)), this,
-            SLOT(handleChannelInitializationFailure(QString)));
-        connect(m_channel.data(), SIGNAL(finished(QSsh::SftpJobId,QString)),
-            this, SLOT(handleJobFinished(QSsh::SftpJobId,QString)));
-        connect(m_channel.data(),
-            SIGNAL(fileInfoAvailable(QSsh::SftpJobId,QList<QSsh::SftpFileInfo>)),
-            SLOT(handleFileInfo(QSsh::SftpJobId,QList<QSsh::SftpFileInfo>)));
-        connect(m_channel.data(), SIGNAL(closed()), this,
-            SLOT(handleChannelClosed()));
+        connect(m_channel.data(), &SftpChannel::initialized,
+                this, &SftpTest::handleChannelInitialized);
+        connect(m_channel.data(), &SftpChannel::channelError,
+                this, &SftpTest::handleChannelInitializationFailure);
+        connect(m_channel.data(), &SftpChannel::finished,
+                this, static_cast<void (SftpTest::*)(QSsh::SftpJobId, const QString &)>(
+                    &SftpTest::handleJobFinished));
+        connect(m_channel.data(), &SftpChannel::fileInfoAvailable,
+                this, &SftpTest::handleFileInfo);
+        connect(m_channel.data(), &SftpChannel::closed,
+                this, &SftpTest::handleChannelClosed);
         m_state = InitializingChannel;
         m_channel->initialize();
     }
@@ -110,7 +105,7 @@ void SftpTest::handleDisconnected()
     else
         std::cout << "No errors encountered.";
     std::cout << std::endl;
-    qApp->exit(m_error ? EXIT_FAILURE : EXIT_SUCCESS);
+    QCoreApplication::exit(m_error ? EXIT_FAILURE : EXIT_SUCCESS);
 }
 
 void SftpTest::handleError()
@@ -119,7 +114,7 @@ void SftpTest::handleError()
         << qPrintable(m_connection->errorString()) << "." << std::endl;
     m_error = true;
     m_state = Disconnecting;
-    qApp->exit(EXIT_FAILURE);
+    QCoreApplication::exit(EXIT_FAILURE);
 }
 
 void SftpTest::handleChannelInitialized()
@@ -196,7 +191,7 @@ void SftpTest::handleChannelClosed()
     m_connection->disconnectFromHost();
 }
 
-void SftpTest::handleJobFinished(QSsh::SftpJobId job, const QString &error)
+void SftpTest::handleJobFinished(SftpJobId job, const QString &error)
 {
     switch (m_state) {
     case UploadingSmall:

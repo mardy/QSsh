@@ -23,27 +23,48 @@
 **
 ****************************************************************************/
 
-#include "argumentscollector.h"
-#include "remoteprocesstest.h"
+#pragma once
 
-#include <ssh/sshconnection.h>
+#include "ssh/ssherrors.h"
 
-#include <QCoreApplication>
 #include <QObject>
-#include <QStringList>
+#include <QSharedPointer>
 
-#include <cstdlib>
-#include <iostream>
+QT_BEGIN_NAMESPACE
+class QTcpSocket;
+QT_END_NAMESPACE
 
-int main(int argc, char *argv[])
-{
-    QCoreApplication app(argc, argv);
-    bool parseSuccess;
-    const QSsh::SshConnectionParameters &parameters
-        = ArgumentsCollector(app.arguments()).collect(parseSuccess);
-    if (!parseSuccess)
-        return EXIT_FAILURE;
-    RemoteProcessTest remoteProcessTest(parameters);
-    remoteProcessTest.run();
-    return app.exec();
+namespace QSsh {
+class SshConnection;
+class SshConnectionParameters;
+class SshTcpIpForwardServer;
 }
+
+class ForwardTunnel : public QObject
+{
+    Q_OBJECT
+public:
+    ForwardTunnel(const QSsh::SshConnectionParameters &parameters,
+                  QObject *parent = 0);
+    void run();
+
+signals:
+    void finished(int exitCode);
+
+private:
+    void handleConnected();
+    void handleConnectionError(QSsh::SshError error);
+    void handleInitialized();
+    void handleServerError(const QString &reason);
+    void handleServerClosed();
+    void handleNewConnection();
+    void handleSocketError();
+
+    QSsh::SshConnection * const m_connection;
+    QSharedPointer<QSsh::SshTcpIpForwardServer> m_server;
+    QTcpSocket *m_targetSocket;
+    quint16 m_targetPort;
+
+    QByteArray m_dataReceivedFromServer;
+    QByteArray m_dataReceivedFromClient;
+};

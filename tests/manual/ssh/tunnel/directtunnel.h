@@ -23,27 +23,52 @@
 **
 ****************************************************************************/
 
-#include "argumentscollector.h"
-#include "remoteprocesstest.h"
+#pragma once
 
-#include <ssh/sshconnection.h>
-
-#include <QCoreApplication>
 #include <QObject>
-#include <QStringList>
+#include <QSharedPointer>
 
-#include <cstdlib>
-#include <iostream>
+QT_BEGIN_NAMESPACE
+class QTcpServer;
+class QTcpSocket;
+QT_END_NAMESPACE
 
-int main(int argc, char *argv[])
-{
-    QCoreApplication app(argc, argv);
-    bool parseSuccess;
-    const QSsh::SshConnectionParameters &parameters
-        = ArgumentsCollector(app.arguments()).collect(parseSuccess);
-    if (!parseSuccess)
-        return EXIT_FAILURE;
-    RemoteProcessTest remoteProcessTest(parameters);
-    remoteProcessTest.run();
-    return app.exec();
+namespace QSsh {
+class SshConnection;
+class SshConnectionParameters;
+class SshDirectTcpIpTunnel;
 }
+
+class DirectTunnel : public QObject
+{
+    Q_OBJECT
+public:
+    DirectTunnel(const QSsh::SshConnectionParameters &parameters, QObject *parent = 0);
+    ~DirectTunnel();
+
+    void run();
+
+signals:
+    void finished(int errorCode);
+
+private:
+    void handleConnected();
+    void handleConnectionError();
+    void handleServerData();
+    void handleInitialized();
+    void handleTunnelError(const QString &reason);
+    void handleTunnelClosed();
+    void handleNewConnection();
+    void handleSocketError();
+    void handleClientData();
+    void handleTimeout();
+
+    QSsh::SshConnection * const m_connection;
+    QSharedPointer<QSsh::SshDirectTcpIpTunnel> m_tunnel;
+    QTcpServer * const m_targetServer;
+    QTcpSocket *m_targetSocket;
+    quint16 m_targetPort;
+    QByteArray m_dataReceivedFromServer;
+    QByteArray m_dataReceivedFromClient;
+    bool m_expectingChannelClose;
+};

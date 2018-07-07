@@ -1,35 +1,29 @@
-/**************************************************************************
+/****************************************************************************
 **
-** This file is part of Qt Creator
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
-** Copyright (c) 2012 Nokia Corporation and/or its subsidiary(-ies).
+** This file is part of Qt Creator.
 **
-** Contact: http://www.qt-project.org/
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and The Qt Company. For licensing terms
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
-** GNU Lesser General Public License Usage
-**
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this file.
-** Please review the following information to ensure the GNU Lesser General
-** Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
-**
-** Other Usage
-**
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**************************************************************************/
+****************************************************************************/
 
-#ifndef SSHPACKET_P_H
-#define SSHPACKET_P_H
+#pragma once
 
 #include "sshexception_p.h"
 
@@ -53,7 +47,9 @@ enum SshPacketType {
     SSH_MSG_KEXINIT = 20,
     SSH_MSG_NEWKEYS = 21,
     SSH_MSG_KEXDH_INIT = 30,
+    SSH_MSG_KEX_ECDH_INIT = 30,
     SSH_MSG_KEXDH_REPLY = 31,
+    SSH_MSG_KEX_ECDH_REPLY = 31,
 
     SSH_MSG_USERAUTH_REQUEST = 50,
     SSH_MSG_USERAUTH_FAILURE = 51,
@@ -61,6 +57,8 @@ enum SshPacketType {
     SSH_MSG_USERAUTH_BANNER = 53,
     SSH_MSG_USERAUTH_PK_OK = 60,
     SSH_MSG_USERAUTH_PASSWD_CHANGEREQ = 60,
+    SSH_MSG_USERAUTH_INFO_REQUEST = 60,
+    SSH_MSG_USERAUTH_INFO_RESPONSE = 61,
 
     SSH_MSG_GLOBAL_REQUEST = 80,
     SSH_MSG_REQUEST_SUCCESS = 81,
@@ -84,6 +82,13 @@ enum SshPacketType {
     // message type as an extension. Switch to a different value in that case
     // (between 128 and 191).
     SSH_MSG_INVALID = 128
+};
+
+enum SshOpenFailureType {
+    SSH_OPEN_ADMINISTRATIVELY_PROHIBITED = 1,
+    SSH_OPEN_CONNECT_FAILED = 2,
+    SSH_OPEN_UNKNOWN_CHANNEL_TYPE = 3,
+    SSH_OPEN_RESOURCE_SHORTAGE = 4
 };
 
 enum SshExtendedDataType { SSH_EXTENDED_DATA_STDERR = 1 };
@@ -140,5 +145,3 @@ protected:
 
 } // namespace Internal
 } // namespace QSsh
-
-#endif // SSHPACKET_P_H

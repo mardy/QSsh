@@ -1,38 +1,34 @@
-/**************************************************************************
+/****************************************************************************
 **
-** This file is part of Qt Creator
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
-** Copyright (c) 2012 Nokia Corporation and/or its subsidiary(-ies).
+** This file is part of Qt Creator.
 **
-** Contact: http://www.qt-project.org/
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and The Qt Company. For licensing terms
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
-** GNU Lesser General Public License Usage
-**
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this file.
-** Please review the following information to ensure the GNU Lesser General
-** Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
-**
-** Other Usage
-**
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**************************************************************************/
+****************************************************************************/
 
 #include "sftpchannel.h"
 #include "sftpchannel_p.h"
 
 #include "sshexception_p.h"
 #include "sshincomingpacket_p.h"
+#include "sshlogging_p.h"
 #include "sshsendfacility_p.h"
 
 #include <QDir>
@@ -41,7 +37,7 @@
 /*!
     \class QSsh::SftpChannel
 
-    \brief This class provides SFTP operations.
+    \brief The SftpChannel class provides SFTP operations.
 
     Objects are created via SshConnection::createSftpChannel().
     The channel needs to be initialized with
@@ -105,21 +101,20 @@ SftpChannel::SftpChannel(quint32 channelId,
     Internal::SshSendFacility &sendFacility)
     : d(new Internal::SftpChannelPrivate(channelId, sendFacility, this))
 {
-    connect(d, SIGNAL(initialized()), this, SIGNAL(initialized()),
-        Qt::QueuedConnection);
-    connect(d, SIGNAL(initializationFailed(QString)), this,
-        SIGNAL(initializationFailed(QString)), Qt::QueuedConnection);
-    connect(d, SIGNAL(dataAvailable(QSsh::SftpJobId,QString)), this,
-        SIGNAL(dataAvailable(QSsh::SftpJobId,QString)), Qt::QueuedConnection);
-    connect(d, SIGNAL(fileInfoAvailable(QSsh::SftpJobId,QList<QSsh::SftpFileInfo>)), this,
-        SIGNAL(fileInfoAvailable(QSsh::SftpJobId,QList<QSsh::SftpFileInfo>)),
-        Qt::QueuedConnection);
-    connect(d, SIGNAL(finished(QSsh::SftpJobId,QString)), this,
-        SIGNAL(finished(QSsh::SftpJobId,QString)), Qt::QueuedConnection);
-    connect(d, SIGNAL(closed()), this, SIGNAL(closed()), Qt::QueuedConnection);
-    connect(d, SIGNAL(transferProgress(QSsh::SftpJobId,quint64,quint64)),
-            this, SIGNAL(transferProgress(QSsh::SftpJobId,quint64,quint64)),
-            Qt::QueuedConnection);
+    connect(d, &Internal::SftpChannelPrivate::initialized,
+            this, &SftpChannel::initialized, Qt::QueuedConnection);
+    connect(d, &Internal::SftpChannelPrivate::channelError,
+            this, &SftpChannel::channelError, Qt::QueuedConnection);
+    connect(d, &Internal::SftpChannelPrivate::dataAvailable,
+            this, &SftpChannel::dataAvailable, Qt::QueuedConnection);
+    connect(d, &Internal::SftpChannelPrivate::fileInfoAvailable,
+            this, &SftpChannel::fileInfoAvailable, Qt::QueuedConnection);
+    connect(d, &Internal::SftpChannelPrivate::finished,
+            this, &SftpChannel::finished, Qt::QueuedConnection);
+    connect(d, &Internal::SftpChannelPrivate::closed,
+            this, &SftpChannel::closed, Qt::QueuedConnection);
+    connect(d, &Internal::SftpChannelPrivate::transferProgress,
+            this, &SftpChannel::transferProgress, Qt::QueuedConnection);
 }
 
 SftpChannel::State SftpChannel::state() const
@@ -288,9 +283,7 @@ void SftpChannelPrivate::handleChannelSuccess()
 {
     if (channelState() == CloseRequested)
         return;
-#ifdef CREATOR_SSH_DEBUG
-    qDebug("sftp subsystem initialized");
-#endif
+    qCDebug(sshLog, "sftp subsystem initialized");
     sendData(m_outgoingPacket.generateInit(ProtocolVersion).rawData());
     m_sftpState = InitSent;
 }
@@ -304,7 +297,7 @@ void SftpChannelPrivate::handleChannelFailure()
         throw SSH_SERVER_EXCEPTION(SSH_DISCONNECT_PROTOCOL_ERROR,
             "Unexpected SSH_MSG_CHANNEL_FAILURE packet.");
     }
-    emit initializationFailed(tr("Server could not start SFTP subsystem."));
+    emit channelError(tr("Server could not start SFTP subsystem."));
     closeChannel();
 }
 
@@ -325,31 +318,34 @@ void SftpChannelPrivate::handleChannelDataInternal(const QByteArray &data)
 void SftpChannelPrivate::handleChannelExtendedDataInternal(quint32 type,
     const QByteArray &data)
 {
-    qWarning("Unexpected extended data '%s' of type %d on SFTP channel.",
-        data.data(), type);
+    qCWarning(sshLog, "Unexpected extended data '%s' of type %d on SFTP channel.",
+              data.data(), type);
 }
 
 void SftpChannelPrivate::handleExitStatus(const SshChannelExitStatus &exitStatus)
 {
-    const char * const message = "Remote SFTP service exited with exit code %d";
-#ifdef CREATOR_SSH_DEBUG
-    qDebug(message, exitStatus.exitStatus);
-#else
-    if (exitStatus.exitStatus != 0)
-        qWarning(message, exitStatus.exitStatus);
-#endif
+    qCDebug(sshLog, "Remote SFTP service exited with exit code %d", exitStatus.exitStatus);
+
+    if (channelState() == CloseRequested || channelState() == Closed)
+        return;
+
+    emit channelError(tr("The SFTP server finished unexpectedly with exit code %1.")
+                      .arg(exitStatus.exitStatus));
+
+    // Note: According to the specs, the server must close the channel after this happens,
+    // but OpenSSH doesn't do that, so we need to initiate the closing procedure ourselves.
+    closeChannel();
 }
 
 void SftpChannelPrivate::handleExitSignal(const SshChannelExitSignal &signal)
 {
-    qWarning("Remote SFTP service killed; signal was %s", signal.signal.data());
+    emit channelError(tr("The SFTP server crashed: %1.").arg(signal.error));
+    closeChannel(); // See above.
 }
 
 void SftpChannelPrivate::handleCurrentPacket()
 {
-#ifdef CREATOR_SSH_DEBUG
-    qDebug("Handling SFTP packet of type %d", m_incomingPacket.type());
-#endif
+    qCDebug(sshLog, "Handling SFTP packet of type %d", m_incomingPacket.type());
     switch (m_incomingPacket.type()) {
     case SSH_FXP_VERSION:
         handleServerVersion();
@@ -384,12 +380,10 @@ void SftpChannelPrivate::handleServerVersion()
             "Unexpected SSH_FXP_VERSION packet.");
     }
 
-#ifdef CREATOR_SSH_DEBUG
-    qDebug("sftp init received");
-#endif
+    qCDebug(sshLog, "sftp init received");
     const quint32 serverVersion = m_incomingPacket.extractServerVersion();
     if (serverVersion != ProtocolVersion) {
-        emit initializationFailed(tr("Protocol version mismatch: Expected %1, got %2")
+        emit channelError(tr("Protocol version mismatch: Expected %1, got %2")
             .arg(serverVersion).arg(ProtocolVersion));
         closeChannel();
     } else {
@@ -475,9 +469,7 @@ void SftpChannelPrivate::handlePutHandle(const JobMap::Iterator &it)
 void SftpChannelPrivate::handleStatus()
 {
     const SftpStatusResponse &response = m_incomingPacket.asStatusResponse();
-#ifdef CREATOR_SSH_DEBUG
-    qDebug("%s: status = %d", Q_FUNC_INFO, response.status);
-#endif
+    qCDebug(sshLog, "%s: status = %d", Q_FUNC_INFO, response.status);
     JobMap::Iterator it = lookupJob(response.requestId);
     switch (it.value()->type()) {
     case AbstractSftpOperation::ListDir:
@@ -516,29 +508,30 @@ void SftpChannelPrivate::handleMkdirStatus(const JobMap::Iterator &it,
     const SftpStatusResponse &response)
 {
     SftpMakeDir::Ptr op = it.value().staticCast<SftpMakeDir>();
-    if (op->parentJob == SftpUploadDir::Ptr()) {
+    QSharedPointer<SftpUploadDir> parentJob = op->parentJob;
+    if (parentJob == SftpUploadDir::Ptr()) {
         handleStatusGeneric(it, response);
         return;
     }
-    if (op->parentJob->hasError) {
+    if (parentJob->hasError) {
         m_jobs.erase(it);
         return;
     }
 
     typedef QMap<SftpMakeDir::Ptr, SftpUploadDir::Dir>::Iterator DirIt;
-    DirIt dirIt = op->parentJob->mkdirsInProgress.find(op);
-    Q_ASSERT(dirIt != op->parentJob->mkdirsInProgress.end());
+    DirIt dirIt = parentJob->mkdirsInProgress.find(op);
+    Q_ASSERT(dirIt != parentJob->mkdirsInProgress.end());
     const QString &remoteDir = dirIt.value().remoteDir;
     if (response.status == SSH_FX_OK) {
-        emit dataAvailable(op->parentJob->jobId,
-            tr("Created remote directory '%1'.").arg(remoteDir));
+        emit dataAvailable(parentJob->jobId,
+            tr("Created remote directory \"%1\".").arg(remoteDir));
     } else if (response.status == SSH_FX_FAILURE) {
-        emit dataAvailable(op->parentJob->jobId,
-            tr("Remote directory '%1' already exists.").arg(remoteDir));
+        emit dataAvailable(parentJob->jobId,
+            tr("Remote directory \"%1\" already exists.").arg(remoteDir));
     } else {
-        op->parentJob->setError();
-        emit finished(op->parentJob->jobId,
-            tr("Error creating directory '%1': %2")
+        parentJob->setError();
+        emit finished(parentJob->jobId,
+            tr("Error creating directory \"%1\": %2")
             .arg(remoteDir, response.errorString));
         m_jobs.erase(it);
         return;
@@ -550,8 +543,8 @@ void SftpChannelPrivate::handleMkdirStatus(const JobMap::Iterator &it,
     foreach (const QFileInfo &dirInfo, dirInfos) {
         const QString remoteSubDir = remoteDir + QLatin1Char('/') + dirInfo.fileName();
         const SftpMakeDir::Ptr mkdirOp(
-            new SftpMakeDir(++m_nextJobId, remoteSubDir, op->parentJob));
-        op->parentJob->mkdirsInProgress.insert(mkdirOp,
+            new SftpMakeDir(++m_nextJobId, remoteSubDir, parentJob));
+        parentJob->mkdirsInProgress.insert(mkdirOp,
             SftpUploadDir::Dir(dirInfo.absoluteFilePath(), remoteSubDir));
         createJob(mkdirOp);
     }
@@ -560,9 +553,9 @@ void SftpChannelPrivate::handleMkdirStatus(const JobMap::Iterator &it,
     foreach (const QFileInfo &fileInfo, fileInfos) {
         QSharedPointer<QFile> localFile(new QFile(fileInfo.absoluteFilePath()));
         if (!localFile->open(QIODevice::ReadOnly)) {
-            op->parentJob->setError();
-            emit finished(op->parentJob->jobId,
-                tr("Could not open local file '%1': %2")
+            parentJob->setError();
+            emit finished(parentJob->jobId,
+                tr("Could not open local file \"%1\": %2")
                 .arg(fileInfo.absoluteFilePath(), localFile->errorString()));
             m_jobs.erase(it);
             return;
@@ -570,15 +563,15 @@ void SftpChannelPrivate::handleMkdirStatus(const JobMap::Iterator &it,
 
         const QString remoteFilePath = remoteDir + QLatin1Char('/') + fileInfo.fileName();
         SftpUploadFile::Ptr uploadFileOp(new SftpUploadFile(++m_nextJobId,
-            remoteFilePath, localFile, SftpOverwriteExisting, op->parentJob));
+            remoteFilePath, localFile, SftpOverwriteExisting, parentJob));
         createJob(uploadFileOp);
-        op->parentJob->uploadsInProgress.append(uploadFileOp);
+        parentJob->uploadsInProgress.append(uploadFileOp);
     }
 
-    op->parentJob->mkdirsInProgress.erase(dirIt);
-    if (op->parentJob->mkdirsInProgress.isEmpty()
-        && op->parentJob->uploadsInProgress.isEmpty())
-        emit finished(op->parentJob->jobId);
+    parentJob->mkdirsInProgress.erase(dirIt);
+    if (parentJob->mkdirsInProgress.isEmpty()
+        && parentJob->uploadsInProgress.isEmpty())
+        emit finished(parentJob->jobId);
     m_jobs.erase(it);
 }
 
@@ -977,9 +970,7 @@ void SftpChannelPrivate::closeHook()
 
 void SftpChannelPrivate::handleOpenSuccessInternal()
 {
-#ifdef CREATOR_SSH_DEBUG
-    qDebug("SFTP session started");
-#endif
+    qCDebug(sshLog, "SFTP session started");
     m_sendFacility.sendSftpPacket(remoteChannel());
     m_sftpState = SubsystemRequested;
 }
@@ -990,7 +981,7 @@ void SftpChannelPrivate::handleOpenFailureInternal(const QString &reason)
         throw SSH_SERVER_EXCEPTION(SSH_DISCONNECT_PROTOCOL_ERROR,
             "Unexpected SSH_MSG_CHANNEL_OPEN_FAILURE packet.");
     }
-    emit initializationFailed(tr("Server could not start session: %1").arg(reason));
+    emit channelError(tr("Server could not start session: %1").arg(reason));
 }
 
 void SftpChannelPrivate::sendReadRequest(const SftpDownload::Ptr &job,

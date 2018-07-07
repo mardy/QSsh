@@ -1,43 +1,36 @@
-/**************************************************************************
+/****************************************************************************
 **
-** This file is part of Qt Creator
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
-** Copyright (c) 2012 Nokia Corporation and/or its subsidiary(-ies).
+** This file is part of Qt Creator.
 **
-** Contact: http://www.qt-project.org/
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and The Qt Company. For licensing terms
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
-** GNU Lesser General Public License Usage
-**
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this file.
-** Please review the following information to ensure the GNU Lesser General
-** Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
-**
-** Other Usage
-**
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**************************************************************************/
+****************************************************************************/
 
-#ifndef SSHINCOMINGPACKET_P_H
-#define SSHINCOMINGPACKET_P_H
+#pragma once
 
 #include "sshpacket_p.h"
 
 #include "sshcryptofacility_p.h"
 #include "sshpacketparser_p.h"
 
-#include <QList>
-#include <QString>
+#include <QStringList>
 
 namespace QSsh {
 namespace Internal {
@@ -63,8 +56,10 @@ struct SshKeyExchangeInit
 struct SshKeyExchangeReply
 {
     QByteArray k_s;
-    QList<Botan::BigInt> parameters; // DSS: p, q, g, y. RSA: e, n.
-    Botan::BigInt f;
+    QList<Botan::BigInt> hostKeyParameters; // DSS: p, q, g, y. RSA: e, n.
+    QByteArray q; // For ECDSA host keys only.
+    Botan::BigInt f; // For DH only.
+    QByteArray q_s; // For ECDH only.
     QByteArray signatureBlob;
 };
 
@@ -81,6 +76,21 @@ struct SshUserAuthBanner
     QByteArray language;
 };
 
+struct SshUserAuthPkOkPacket
+{
+    QByteArray algoName;
+    QByteArray keyBlob;
+};
+
+struct SshUserAuthInfoRequestPacket
+{
+    QString name;
+    QString instruction;
+    QByteArray languageTag;
+    QStringList prompts;
+    QList<bool> echos;
+};
+
 struct SshDebug
 {
     bool display;
@@ -91,6 +101,20 @@ struct SshDebug
 struct SshUnimplemented
 {
     quint32 invalidMsgSeqNr;
+};
+
+struct SshRequestSuccess
+{
+    quint32 bindPort;
+};
+
+struct SshChannelOpen
+{
+    quint32 remoteChannel;
+    quint32 remoteWindowSize;
+    quint32 remoteMaxPacketSize;
+    QByteArray remoteAddress;
+    quint32 remotePort;
 };
 
 struct SshChannelOpenFailure
@@ -143,7 +167,6 @@ struct SshChannelExitSignal
     QByteArray language;
 };
 
-
 class SshIncomingPacket : public AbstractSshPacket
 {
 public:
@@ -154,12 +177,17 @@ public:
     void reset();
 
     SshKeyExchangeInit extractKeyExchangeInitData() const;
-    SshKeyExchangeReply extractKeyExchangeReply(const QByteArray &pubKeyAlgo) const;
+    SshKeyExchangeReply extractKeyExchangeReply(const QByteArray &kexAlgo,
+                                                const QByteArray &hostKeyAlgo) const;
     SshDisconnect extractDisconnect() const;
     SshUserAuthBanner extractUserAuthBanner() const;
+    SshUserAuthInfoRequestPacket extractUserAuthInfoRequest() const;
+    SshUserAuthPkOkPacket extractUserAuthPkOk() const;
     SshDebug extractDebug() const;
+    SshRequestSuccess extractRequestSuccess() const;
     SshUnimplemented extractUnimplemented() const;
 
+    SshChannelOpen extractChannelOpen() const;
     SshChannelOpenFailure extractChannelOpenFailure() const;
     SshChannelOpenConfirmation extractChannelOpenConfirmation() const;
     SshChannelWindowAdjust extractWindowAdjust() const;
@@ -174,6 +202,7 @@ public:
 
     static const QByteArray ExitStatusType;
     static const QByteArray ExitSignalType;
+    static const QByteArray ForwardedTcpIpType;
 
 private:
     virtual quint32 cipherBlockSize() const;
@@ -189,5 +218,3 @@ private:
 
 } // namespace Internal
 } // namespace QSsh
-
-#endif // SSHINCOMINGPACKET_P_H

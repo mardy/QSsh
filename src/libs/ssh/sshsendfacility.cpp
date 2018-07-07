@@ -1,36 +1,32 @@
-/**************************************************************************
+/****************************************************************************
 **
-** This file is part of Qt Creator
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
-** Copyright (c) 2012 Nokia Corporation and/or its subsidiary(-ies).
+** This file is part of Qt Creator.
 **
-** Contact: http://www.qt-project.org/
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and The Qt Company. For licensing terms
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 3 as published by the Free Software
+** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
-** GNU Lesser General Public License Usage
-**
-** This file may be used under the terms of the GNU Lesser General Public
-** License version 2.1 as published by the Free Software Foundation and
-** appearing in the file LICENSE.LGPL included in the packaging of this file.
-** Please review the following information to ensure the GNU Lesser General
-** Public License version 2.1 requirements will be met:
-** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
-**
-** In addition, as a special exception, Nokia gives you certain additional
-** rights. These rights are described in the Nokia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
-**
-** Other Usage
-**
-** Alternatively, this file may be used in accordance with the terms and
-** conditions contained in a signed written agreement between you and Nokia.
-**
-**
-**************************************************************************/
+****************************************************************************/
 
 #include "sshsendfacility_p.h"
 
 #include "sshkeyexchange_p.h"
+#include "sshlogging_p.h"
 #include "sshoutgoingpacket_p.h"
 
 #include <QTcpSocket>
@@ -46,9 +42,7 @@ SshSendFacility::SshSendFacility(QTcpSocket *socket)
 
 void SshSendFacility::sendPacket()
 {
-#ifdef CREATOR_SSH_DEBUG
-    qDebug("Sending packet, client seq nr is %u", m_clientSeqNr);
-#endif
+    qCDebug(sshLog, "Sending packet, client seq nr is %u", m_clientSeqNr);
     if (m_socket->isValid()
         && m_socket->state() == QAbstractSocket::ConnectedState) {
         m_socket->write(m_outgoingPacket.rawData());
@@ -85,6 +79,12 @@ void SshSendFacility::sendKeyDhInitPacket(const Botan::BigInt &e)
     sendPacket();
 }
 
+void SshSendFacility::sendKeyEcdhInitPacket(const QByteArray &clientQ)
+{
+    m_outgoingPacket.generateKeyEcdhInitPacket(clientQ);
+    sendPacket();
+}
+
 void SshSendFacility::sendNewKeysPacket()
 {
     m_outgoingPacket.generateNewKeysPacket();
@@ -110,17 +110,37 @@ void SshSendFacility::sendUserAuthServiceRequestPacket()
     sendPacket();
 }
 
-void SshSendFacility::sendUserAuthByPwdRequestPacket(const QByteArray &user,
+void SshSendFacility::sendUserAuthByPasswordRequestPacket(const QByteArray &user,
     const QByteArray &service, const QByteArray &pwd)
 {
-    m_outgoingPacket.generateUserAuthByPwdRequestPacket(user, service, pwd);
+    m_outgoingPacket.generateUserAuthByPasswordRequestPacket(user, service, pwd);
     sendPacket();
     }
 
-void SshSendFacility::sendUserAuthByKeyRequestPacket(const QByteArray &user,
-    const QByteArray &service)
+void SshSendFacility::sendUserAuthByPublicKeyRequestPacket(const QByteArray &user,
+    const QByteArray &service, const QByteArray &key, const QByteArray &signature)
 {
-    m_outgoingPacket.generateUserAuthByKeyRequestPacket(user, service);
+    m_outgoingPacket.generateUserAuthByPublicKeyRequestPacket(user, service, key, signature);
+    sendPacket();
+}
+
+void SshSendFacility::sendQueryPublicKeyPacket(const QByteArray &user, const QByteArray &service,
+                                               const QByteArray &publicKey)
+{
+    m_outgoingPacket.generateQueryPublicKeyPacket(user, service, publicKey);
+    sendPacket();
+}
+
+void SshSendFacility::sendUserAuthByKeyboardInteractiveRequestPacket(const QByteArray &user,
+                                                                     const QByteArray &service)
+{
+    m_outgoingPacket.generateUserAuthByKeyboardInteractiveRequestPacket(user, service);
+    sendPacket();
+}
+
+void SshSendFacility::sendUserAuthInfoResponsePacket(const QStringList &responses)
+{
+    m_outgoingPacket.generateUserAuthInfoResponsePacket(responses);
     sendPacket();
 }
 
@@ -147,6 +167,27 @@ void SshSendFacility::sendSessionPacket(quint32 channelId, quint32 windowSize,
 {
     m_outgoingPacket.generateSessionPacket(channelId, windowSize,
         maxPacketSize);
+    sendPacket();
+}
+
+void SshSendFacility::sendDirectTcpIpPacket(quint32 channelId, quint32 windowSize,
+    quint32 maxPacketSize, const QByteArray &remoteHost, quint32 remotePort,
+    const QByteArray &localIpAddress, quint32 localPort)
+{
+    m_outgoingPacket.generateDirectTcpIpPacket(channelId, windowSize, maxPacketSize, remoteHost,
+            remotePort, localIpAddress, localPort);
+    sendPacket();
+}
+
+void SshSendFacility::sendTcpIpForwardPacket(const QByteArray &bindAddress, quint32 bindPort)
+{
+    m_outgoingPacket.generateTcpIpForwardPacket(bindAddress, bindPort);
+    sendPacket();
+}
+
+void SshSendFacility::sendCancelTcpIpForwardPacket(const QByteArray &bindAddress, quint32 bindPort)
+{
+    m_outgoingPacket.generateCancelTcpIpForwardPacket(bindAddress, bindPort);
     sendPacket();
 }
 
@@ -213,6 +254,21 @@ void SshSendFacility::sendChannelEofPacket(quint32 remoteChannel)
 void SshSendFacility::sendChannelClosePacket(quint32 remoteChannel)
 {
     m_outgoingPacket.generateChannelClosePacket(remoteChannel);
+    sendPacket();
+}
+
+void SshSendFacility::sendChannelOpenConfirmationPacket(quint32 remoteChannel, quint32 localChannel,
+    quint32 localWindowSize, quint32 maxPacketSize)
+{
+    m_outgoingPacket.generateChannelOpenConfirmationPacket(remoteChannel, localChannel,
+                                                           localWindowSize, maxPacketSize);
+    sendPacket();
+}
+
+void SshSendFacility::sendChannelOpenFailurePacket(quint32 remoteChannel, quint32 reason,
+    const QByteArray &reasonString)
+{
+    m_outgoingPacket.generateChannelOpenFailurePacket(remoteChannel, reason, reasonString);
     sendPacket();
 }
 

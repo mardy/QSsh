@@ -41,6 +41,7 @@ win32 {
     CONFIG += static
     CONFIG -= shared
     CONFIG -= dll
+    DEFINES -= BOTAN_DLL=Q_DECL_EXPORT
     DEFINES += BOTAN_DLL=""
 }
 

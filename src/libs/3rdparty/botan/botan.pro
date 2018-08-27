@@ -37,6 +37,11 @@ win32 {
         QMAKE_CXXFLAGS += -fpermissive -finline-functions -Wno-long-long
     }
     LIBS += -ladvapi32 -luser32
+
+    CONFIG += static
+    CONFIG -= shared
+    CONFIG -= dll
+    DEFINES += BOTAN_DLL=""
 }
 
 unix:*-g++* {
